@@ -1,75 +1,46 @@
-# پیش‌بینی ادعای خسارت بیمه خودرو
+# Car Insurance Claim Prediction
 
-این پروژه برای درس داده‌کاوی انجام شده است. هدف این است که با استفاده از اطلاعات یک راننده (سن، جنسیت، تجربه‌ی رانندگی، سال خودرو و ...) پیش‌بینی کنیم آیا او ادعای خسارت از بیمه داشته است یا نه. مسئله یک **طبقه‌بندی دودویی** است و دو مدل **درخت تصمیم** و **SVM خطی** با هم مقایسه می‌شوند.
+Data mining course project. Binary classification: predict whether a driver filed an insurance claim (`OUTCOME`), comparing a Decision Tree and a Linear SVM.
 
-## مجموعه داده
+## Dataset
 
-- منبع: [Car Insurance Data در Kaggle](https://www.kaggle.com/datasets/sagnik1511/car-insurance-data)
-- حدود ۱۰٬۰۰۰ رکورد (ردیف) و ۱۹ ستون
-- هر ردیف اطلاعات یک فرد بیمه‌شده است
-- بعد از حذف ستون `ID`، ۱۷ ویژگی ورودی و یک ستون هدف (`OUTCOME`) باقی می‌ماند
-- ستون هدف: `OUTCOME = 1` یعنی ادعای خسارت داشته، `OUTCOME = 0` یعنی نداشته
-- داده نامتوازن است: حدود ۶۹٪ کلاس ۰ و ۳۱٪ کلاس ۱
+- Source: [Car Insurance Data on Kaggle](https://www.kaggle.com/datasets/sagnik1511/car-insurance-data)
+- ~10,000 rows, 19 columns (17 input features + `OUTCOME` after dropping `ID`)
+- Imbalanced: ~69% no claim (0), ~31% claim (1)
+- The CSV is not included in this repo. Download it from Kaggle and place it next to the notebook.
 
-برای دانلود داده باید در Kaggle ثبت‌نام کنید (ممکن است فیلترشکن لازم باشد). فایل CSV به دلیل حجم و قوانین سایت در این ریپو قرار داده نشده است؛ آن را دانلود کنید و کنار نوت‌بوک بگذارید.
+## Pipeline
 
-## مراحل پروژه
+All fitted steps use the training set only, so there is no data leakage.
 
-ترتیب اجرا طوری انتخاب شده که **نشت داده (data leakage)** پیش نیاید: هر چیزی که از داده «یاد گرفته می‌شود» فقط روی بخش آموزش تنظیم می‌شود و بخش آزمون تا آخر کار دست‌نخورده می‌ماند.
+1. Drop `ID`, inspect types, missing values, outliers and class balance
+2. Stratified 80/20 train/test split
+3. Remove outliers (IQR) from the training set, only for `CREDIT_SCORE` and `ANNUAL_MILEAGE`
+4. Balance classes by undersampling the training set (2018 samples per class)
+5. Preprocessing inside a `Pipeline`: mean imputation + `MinMaxScaler` for numeric columns, `OneHotEncoder` for categorical columns
+6. Train Linear SVM and Decision Tree (`max_depth=5`)
+7. Tune both with `GridSearchCV` (5-fold, F1)
 
-1. **خواندن داده و حذف شناسه:** ستون `ID` حذف می‌شود چون اطلاعاتی درباره‌ی رفتار فرد ندارد.
-2. **گزارش اولیه:** نوع ستون‌ها، آمار توصیفی، تعداد مقادیر گمشده و توازن کلاس‌ها بررسی می‌شود. ستون‌های `CREDIT_SCORE` و `ANNUAL_MILEAGE` مقادیر گمشده دارند.
-3. **بررسی داده‌های پرت:** با باکس‌پلات انجام می‌شود. حذف پرت‌ها با روش IQR و فقط روی بخش آموزش و فقط برای دو ستون پیوسته (`CREDIT_SCORE` و `ANNUAL_MILEAGE`) انجام شده است. ستون‌هایی مثل `DUIS` و `SPEEDING_VIOLATIONS` و `PAST_ACCIDENTS` بیشترشان صفر هستند و با روش IQR هر مقدار غیرصفر «پرت» حساب می‌شود، در حالی که این‌ها رانندگان پرخطر و واقعی‌اند.
-4. **مقایسه‌ی دو گروه:** ویژگی‌ها بین گروه ادعا‌دار (۱) و بدون ادعا (۰) با باکس‌پلات و جدول فراوانی مقایسه می‌شوند.
-5. **تقسیم آموزش و آزمون:** ۸۰٪ آموزش و ۲۰٪ آزمون، با `stratify` تا نسبت دو کلاس در هر دو بخش یکسان باشد.
-6. **متعادل‌سازی کلاس‌ها:** با نمونه‌برداری تصادفی از کلاس اکثریت (undersampling) و فقط روی بخش آموزش. نتیجه: ۲۰۱۸ نمونه از هر کلاس.
-7. **پیش‌پردازش داخل Pipeline:**
-   - ستون‌های عددی: پر کردن مقادیر گمشده با میانگین و سپس `MinMaxScaler`
-   - ستون‌های متنی: پر کردن با پرتکرارترین مقدار و سپس `OneHotEncoder`
-   - چون همه‌چیز داخل Pipeline است، میانگین و دسته‌ها فقط از داده‌ی آموزش یاد گرفته می‌شوند.
-8. **آموزش دو مدل:** `DecisionTreeClassifier` (با `max_depth=5`) و `SVC(kernel='linear')`، و مقایسه با جدول خطا (confusion matrix) و معیارهای accuracy و balanced accuracy و F1 و MAE و MSE.
-9. **اهمیت ویژگی‌ها:** با `feature_importances_` درخت و ضرایب SVM خطی.
-10. **تنظیم پارامترها با GridSearchCV:** روی داده‌ی آموزش و با اعتبارسنجی ۵‌بخشی.
-    - SVM: kernel (`linear` و `rbf`)، `C` و `gamma` (۲۵ ترکیب)
-    - درخت: `max_depth` و `min_samples_leaf` و `criterion` (۴۰ ترکیب)
+## Results (test set, 1630 samples)
 
-## نتایج روی داده‌ی آزمون (۱۶۳۰ نمونه)
+| Model | Accuracy | Balanced Acc | F1 |
+|---|---|---|---|
+| Linear SVM | 0.8117 | 0.8173 | 0.7333 |
+| Decision Tree | 0.8092 | 0.8231 | 0.7371 |
+| Tuned SVM (linear, C=0.1) | 0.8104 | 0.8175 | 0.7329 |
+| Tuned Tree (entropy, depth 5, min leaf 5) | 0.8092 | 0.8231 | 0.7371 |
 
-| مدل | Accuracy | Balanced Acc | F1 | MAE | MSE |
-|---|---|---|---|---|---|
-| Linear SVM | 0.8117 | 0.8173 | 0.7333 | 0.1883 | 0.1883 |
-| Decision Tree | 0.8092 | 0.8231 | 0.7371 | 0.1908 | 0.1908 |
-| Tuned SVM | 0.8104 | 0.8175 | 0.7329 | 0.1896 | 0.1896 |
-| Tuned Tree | 0.8092 | 0.8231 | 0.7371 | 0.1908 | 0.1908 |
+## Key findings
 
-بهترین پارامترها در GridSearchCV:
+- All models reach ~81% accuracy, well above the 69% majority-class baseline. Differences between models are only a few samples, so none is clearly better.
+- The tree has slightly higher recall on claims (~0.86), so it misses fewer real claims. Most errors are false alarms, a side effect of training on balanced data and testing on imbalanced data.
+- Hyperparameter tuning barely helped and `rbf` did not beat the linear kernel.
+- Most important features in both models: low driving experience (0-9 years), vehicle ownership, vehicle year, postal code. Feature importance does not imply causation, and `POSTAL_CODE` is a region code, not a numeric value.
 
-- SVM: kernel خطی با `C=0.1` (F1 اعتبارسنجی: ۰.۸۳۲۹)
-- درخت: `criterion='entropy'`، `max_depth=5`، `min_samples_leaf=5` (F1 اعتبارسنجی: ۰.۸۳۸۹)
-
-## تحلیل و نتیجه‌گیری
-
-- هر چهار مدل accuracy حدود ۸۱٪ دارند. چون ۶۹٪ داده‌ی آزمون کلاس ۰ است، مدلی که همیشه «بدون ادعا» بگوید ۶۹٪ دقت می‌گیرد، پس مدل‌ها واقعاً چیزی یاد گرفته‌اند. به همین دلیل علاوه بر accuracy، معیارهای balanced accuracy و F1 هم گزارش شد.
-- اختلاف مدل‌ها در حد چند نمونه از ۱۶۳۰ نمونه است و نمی‌توان یکی را به‌طور قطعی بهتر دانست. درخت به‌خاطر recall بالاتر برای کلاس ۱ (حدود ۰.۸۶) ادعاهای واقعی کمتری را از دست می‌دهد.
-- بیشتر خطاها از نوع «هشدار اشتباه» است (افراد بدون ادعا که ادعادار پیش‌بینی شده‌اند). علتش متعادل‌سازی است: مدل روی داده‌ی ۵۰/۵۰ آموزش دیده ولی آزمون هنوز ۶۹/۳۰ است.
-- تنظیم پارامتر تقریباً اثری نداشت و `rbf` برتری نشان نداد. یعنی داده تقریباً به‌صورت خطی قابل جداسازی است و سقف عملکرد را خود ویژگی‌ها تعیین می‌کنند.
-- مهم‌ترین ویژگی‌ها در هر دو مدل: تجربه‌ی رانندگی کم (۰ تا ۹ سال)، مالکیت خودرو، سال خودرو و کد پستی. اهمیت بالای یک ویژگی به معنای علت بودن آن نیست، و `POSTAL_CODE` چون کد منطقه است تفسیر معناداری ندارد.
-- برای MAE و MSE: در برچسب‌های ۰ و ۱ هر دو برابر نرخ خطا (۱ منهای accuracy) هستند.
-
-## پیشنهاد برای بهبود
-
-- تبدیل `POSTAL_CODE` به ستون دسته‌ای قبل از تقسیم داده
-- استفاده از `class_weight='balanced'` روی کل داده‌ی آموزش به‌جای حذف نیمی از نمونه‌های کلاس ۰
-- بالا بردن آستانه‌ی تصمیم برای کم کردن هشدارهای اشتباه
-
-## نحوه‌ی اجرا
+## Run
 
 ```bash
 pip install -r requirements.txt
 ```
 
-فایل `Car_Insurance_Claim 1.csv` را از Kaggle دانلود کنید، کنار نوت‌بوک بگذارید و سلول‌ها را از اول به ترتیب اجرا کنید (Restart & Run All).
-
-## کتابخانه‌ها
-
-`pandas`، `numpy`، `matplotlib`، `seaborn`، `scikit-learn`
+Then run the notebook from top to bottom.
