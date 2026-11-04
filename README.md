@@ -23,12 +23,14 @@ All fitted steps use the training set only, so there is no data leakage.
 
 ## Results (test set, 1630 samples)
 
-| Model | Accuracy | Balanced Acc | F1 |
-|---|---|---|---|
-| Linear SVM | 0.8117 | 0.8173 | 0.7333 |
-| Decision Tree | 0.8092 | 0.8231 | 0.7371 |
-| Tuned SVM (linear, C=0.1) | 0.8104 | 0.8175 | 0.7329 |
-| Tuned Tree (entropy, depth 5, min leaf 5) | 0.8092 | 0.8231 | 0.7371 |
+| Model | Accuracy | Balanced Acc | F1 | MAE | MSE |
+|---|---|---|---|---|---|
+| Linear SVM | 0.8117 | 0.8173 | 0.7333 | 0.1883 | 0.1883 |
+| Decision Tree | 0.8092 | 0.8231 | 0.7371 | 0.1908 | 0.1908 |
+| Tuned SVM (linear, C=0.1) | 0.8104 | 0.8175 | 0.7329 | 0.1896 | 0.1896 |
+| Tuned Tree (entropy, depth 5, min leaf 5) | 0.8092 | 0.8231 | 0.7371 | 0.1908 | 0.1908 |
+
+For 0/1 labels, MAE and MSE both equal the error rate (1 - accuracy).
 
 ## Key findings
 
